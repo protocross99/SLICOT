@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1509895352294
-Build-Jdk: 1.8.0_144
+Bnd-LastModified: 1511416404705
+Build-Jdk: 1.8.0_151
 Built-By: netfpga
 Bundle-Description: OpenDaylight is leading the transformation to Open S
  oftware Defined Networking (SDN). For more information, please see http
@@ -13,10 +13,11 @@ Bundle-SymbolicName: com.siwind.bupt.getpacket-impl
 Bundle-Vendor: OpenDaylight
 Bundle-Version: 0.1.0.SNAPSHOT
 Created-By: Apache Maven Bundle Plugin
-Import-Package: org.opendaylight.controller.md.sal.binding.api;version="
- [1.4,2)",org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.r
- ev130709;version="[0.3,1)",org.opendaylight.yangtools.concepts;version=
- "[1.0,2)",org.opendaylight.yangtools.yang.binding;version="[0.9,1)",org
- .slf4j;version="[1.7,2)"
+Import-Package: org.apache.commons.codec.binary;version="[1.9,2)",org.js
+ on;version="[20160810.0,20160811)",org.opendaylight.controller.md.sal.b
+ inding.api;version="[1.4,2)",org.opendaylight.yang.gen.v1.urn.opendayli
+ ght.packet.service.rev130709;version="[0.3,1)",org.opendaylight.yangtoo
+ ls.concepts;version="[1.0,2)",org.opendaylight.yangtools.yang.binding;v
+ ersion="[0.9,1)",org.slf4j;version="[1.7,2)"
 Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.8))"
 Tool: Bnd-3.0.0.201509101326

@@ -13,6 +13,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 import org.apache.commons.codec.binary.Base64;
+import org.codehaus.jettison.json.JSONObject;
 
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.rev130715.MacAddress;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.FlowId;
@@ -40,12 +41,6 @@ import com.siwind.bupt.impl.FlowManager;
 import com.siwind.bupt.impl.RequestList;
 import com.siwind.bupt.impl.PendingList;
 import com.siwind.bupt.impl.FlowRecord;
-import com.siwind.bupt.impl.BlockedHost;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.apache.commons.codec.binary.Base64;
 public class PacketHandler implements PacketProcessingListener {
 
     /**
@@ -101,13 +96,12 @@ public class PacketHandler implements PacketProcessingListener {
 	String SYN_PACKET = "02";
 	String SYN_ACK_PACKET = "12";
 	String ACK_PACKET = "10";
-	String RST_PACKET = "14";
+	String RST_PACKET = "05";
 	int REQ_LIMIT = 10;
 	private static final byte[] ETH_TYPE_IPV4 = new byte[] { 0x08, 0x00 };
 	PendingList mainPendingList;
 	PendingList subPendingList;
 	RequestList supportRequestList;
-	ArrayList<BlockedHost> blockList;
 	String flowName;
 	int tableId = 0;
 	int flowNum = 0;
@@ -120,7 +114,6 @@ public class PacketHandler implements PacketProcessingListener {
 		this.mainPendingList = new PendingList();
 		this.subPendingList = new PendingList();
 		this.supportRequestList = new RequestList();
-		this.blockList = new ArrayList<BlockedHost>();
     };
 
     @Override
@@ -142,40 +135,18 @@ public class PacketHandler implements PacketProcessingListener {
         String ethStr = byteToHexStr(ethType, "");
 		String pktStr = byteToHexStr(pktType, "");
 
-// 		System.out.println("from: " + srcMac + " to: " + dstMac + " Packet Type: " + pktStr);
+ 		System.out.println("from: " + srcMac + " to: " + dstMac + " Packet Type: " + pktStr);
         LOG.info("[Siwind] Received packet from MAC {} to MAC {}, EtherType=0x{} ", srcMac, dstMac, ethStr);
 		if (Arrays.equals(ETH_TYPE_IPV4, ethType)) {
-			if (pktStr.equals(SYN_PACKET)) {
-				double eslapsed = 0;
-				boolean isBlocked = false;
-				for (BlockedHost host : blockList) {
-					if (Arrays.equals(host.getSrcMac(),srcMacRaw)) {
-						eslapsed = (double)(System.nanoTime() - host.getTime())/1.0E09;
-						isBlocked = true;
-						break;
-					}
-				}
-				if (isBlocked) {
-					if ( eslapsed > 600 ) {
-						tableId = 0;
-						for (String nodeId : nodeList) {
-							flowName = "Block-SLICOTS" + flowNum;
-							flowId = "SLICOT" + flowNum;
-							FlowManager.blockHost(nodeId,flowName,srcMac,tableId,flowId);
-							flowNum += 1;
-						}
-						System.out.println("Block host from history: " + srcMac);
-					}
-				}	
-				//System.out.println("Received SYN");
-				else if (supportRequestList.isExisted(srcMacRaw)) {
+			/*if (pktType == SYN_PACKET) {
+				if (supportRequestList.isExisted(srcMacRaw)) {
 					//search in pending list
 					int numOfReq = supportRequestList.getNumOfReq(srcMacRaw);
 					//if found get number of current request
 					if (numOfReq > REQ_LIMIT) {
 						//add rule to block host
 						for (FlowRecord record : mainPendingList.pendingList) {
-							if (Arrays.equals(srcMacRaw,record.getSrcMac()) && Arrays.equals(dstMacRaw,record.getDstMac())) {
+							if ((srcMacRaw = record.getSrcMac()) && (dstMacRaw = record.getDstMac())) {
 								int tableId = record.getTableId();
 								String flowId = record.getFlowId();
 								for (String nodeId : nodeList) {
@@ -184,7 +155,7 @@ public class PacketHandler implements PacketProcessingListener {
 							}
 						}
 						for (FlowRecord record : subPendingList.pendingList) {
-							if (Arrays.equals(srcMacRaw,record.getSrcMac()) && Arrays.equals(dstMacRaw,record.getDstMac())) {
+							if ((srcMacRaw = record.getSrcMac()) && (dstMacRaw = record.getDstMac())) {
 								int tableId = record.getTableId();
 								String flowId = record.getFlowId();
 								for (String nodeId : nodeList) {
@@ -195,19 +166,14 @@ public class PacketHandler implements PacketProcessingListener {
 						mainPendingList.removeRecord(srcMacRaw,dstMacRaw);
 						subPendingList.removeRecord(srcMacRaw,dstMacRaw);
 						tableId = 0;
-						long start = System.nanoTime();
-						BlockedHost blockedHost = new BlockedHost(srcMacRaw,start);
-						blockList.add(blockedHost);
 						for (String nodeId : nodeList) {
 							flowName = "Block-SLICOTS" + flowNum;
 							flowId = "SLICOT" + flowNum;
 							FlowManager.blockHost(nodeId,flowName,srcMac,tableId,flowId);
 							flowNum += 1;
 						}
-						System.out.println("Detect attack and block host: " + srcMac);
-						supportRequestList.removeRequest(srcMacRaw);
 					} else {
-						//Store data to pending list
+						//Store data to pendding list
 						flowId = "SLICOT" + flowNum;
 						flowName = "Temp-SLICOTS" + flowNum;
 						mainPendingList.addRecord(srcMacRaw,dstMacRaw,srcPortRaw,dstPortRaw,"SYN",tableId,flowId);
@@ -229,41 +195,15 @@ public class PacketHandler implements PacketProcessingListener {
 						}
 						//Update request num
 						supportRequestList.updateRequestList(srcMacRaw);
-						//System.out.println("Get SYN and add,update to pendinglist: "+ srcMac);
-					}
-				} else {//new SYN
-					//add
-					//Store data to pendding list
-					flowId = "SLICOT" + flowNum;
-					flowName = "Temp-SLICOTS" + flowNum;
-					mainPendingList.addRecord(srcMacRaw,dstMacRaw,srcPortRaw,dstPortRaw,"SYN",tableId,flowId);
-					for (String nodeId : nodeList) {
-						flowName = "Temp-SLICOTS" + flowNum;
-						flowId = "SLICOT" + flowNum;
-						FlowManager.installFlow(nodeId,flowName,dstMac,srcMac,tableId,flowId);
-						flowNum += 1;
-					}
-					//To controller
-					flowId = "SLICOT" + flowNum;
-					flowName = "Temp-SLICOTS-CTRL" + flowNum;
-					subPendingList.addRecord(srcMacRaw,dstMacRaw,srcPortRaw,dstPortRaw,"SYN",tableId,flowId);
-					for (String nodeId : nodeList) {
-						flowName = "Temp-SLICOTS-CTRL" + flowNum;
-						flowId = "SLICOT" + flowNum;
-						FlowManager.installFlowToController(nodeId,flowName,dstMac,srcMac,tableId,flowId);
-						flowNum += 1;
-					}
-					supportRequestList.addRequest(srcMacRaw);
-					//System.out.println("Get SYN and add to pendinglist: "+ srcMac);
 				}
-			} else if (pktStr.equals(RST_PACKET)) {
+			} else if (pktType == RST_PACKET) {
 				//search in pending list
-				int numOfReq = supportRequestList.getNumOfReq(dstMacRaw);
+				int numOfReq = supportRequestList.getNumOfReq(srcMacRaw);
 				//if found get number of current request
 				if (numOfReq > REQ_LIMIT) {
 					//add rule to block host
 					for (FlowRecord record : mainPendingList.pendingList) {
-						if (Arrays.equals(srcMacRaw,record.getDstMac()) && Arrays.equals(dstMacRaw,record.getSrcMac())) {
+						if ((srcMacRaw = record.getSrcMac()) && (dstMacRaw = record.getDstMac())) {
 							int tableId = record.getTableId();
 							String flowId = record.getFlowId();
 							for (String nodeId : nodeList) {
@@ -272,7 +212,7 @@ public class PacketHandler implements PacketProcessingListener {
 						}
 					}
 					for (FlowRecord record : subPendingList.pendingList) {
-						if (Arrays.equals(srcMacRaw,record.getDstMac()) && Arrays.equals(dstMacRaw,record.getSrcMac())) {
+						if ((srcMacRaw = record.getSrcMac()) && (dstMacRaw = record.getDstMac())) {
 								int tableId = record.getTableId();
 								String flowId = record.getFlowId();
 								for (String nodeId : nodeList) {
@@ -280,36 +220,31 @@ public class PacketHandler implements PacketProcessingListener {
 							}
 						}
 					}
-					mainPendingList.removeRecord(dstMacRaw,srcMacRaw);
-					subPendingList.removeRecord(dstMacRaw,srcMacRaw);
-					tableId = 0;
-					long start = System.nanoTime();
-					BlockedHost blockedHost = new BlockedHost(srcMacRaw,start);
-					blockList.add(blockedHost);
-					for (String nodeId : nodeList) {
-						flowName = "Block-SLICOTS" + flowNum;
-						flowId = "SLICOT" + flowNum;
-						FlowManager.blockHost(nodeId,flowName,dstMac,tableId,flowId);
-						flowNum += 1;
-					}
-					System.out.println("Detect attack and block host: " + dstMac);
-					supportRequestList.removeRequest(srcMacRaw);
+						mainPendingList.removeRecord(srcMacRaw,dstMacRaw);
+						subPendingList.removeRecord(srcMacRaw,dstMacRaw);
+						tableId = 0;
+						for (String nodeId : nodeList) {
+							flowName = "Block-SLICOTS" + flowNum;
+							flowId = "SLICOT" + flowNum;
+							FlowManagers.blockHost(nodeId,flowName,srcMac,tableId,flowId);
+							flowNum += 1;
+						}
 				} else {
 					//find record and update to RST
-					mainPendingList.updateRecordStatus(srcMacRaw,dstMacRaw,"RESET");
-					subPendingList.updateRecordStatus(srcMacRaw,dstMacRaw,"RESET");
-					//System.out.println("Get RESET and update status: " + srcMac + " to " + dstMac);
-				}
-			} else if (pktStr.equals(SYN_ACK_PACKET)) {	
-				//find record and update to SYN_ACK
-				mainPendingList.updateRecordStatus(srcMacRaw,dstMacRaw,"SYN_ACK");
-				subPendingList.updateRecordStatus(srcMacRaw,dstMacRaw,"SYN_ACK");
+					mainPendingList.updateRecordStatus(srcMacRaw,dstMacraw,"RESET");
+					subPendingList.updateRecordStatus(srcMacRaw,dstMacraw,"RESET");
 
-			} else if (pktStr.equals(ACK_PACKET)) {
+				}
+			} else if (pktType == SYN_ACK_PACKET) {	
+				//find record and update to SYN_ACK
+				mainPendingList.updateRecordStatus(srcMacRaw,dstMacraw,"SYN_ACK");
+				subPendingList.updateRecordStatus(srcMacRaw,dstMacraw,"SYN_ACK");
+
+			} else if (pktType == ACK_PACKET) {
 				//find and remove in pending list
 				//add flow 
 				for (FlowRecord record : subPendingList.pendingList) {
-					if (Arrays.equals(srcMacRaw,record.getSrcMac()) & Arrays.equals(dstMacRaw,record.getDstMac())) {
+					if ((srcMacRaw = record.getSrcMac()) && (dstMacRaw = record.getDstMac())) {
 						int tableId = record.getTableId();
 						String flowId = record.getFlowId();
 						for (String nodeId : nodeList) {
@@ -319,7 +254,7 @@ public class PacketHandler implements PacketProcessingListener {
 				}
 				mainPendingList.removeRecord(srcMacRaw,dstMacRaw);
 				subPendingList.removeRecord(srcMacRaw,dstMacRaw);
-			}
+			}*/
         } else {
             // non IPv4 package
             //flood(notification.getPayload(), notification.getIngress());
@@ -417,12 +352,14 @@ public class PacketHandler implements PacketProcessingListener {
         while ((line = in.readLine()) != null) {
 			inline = inline + line;
         }
+		//JSONParser reads the data from string object and break each data into key value pairs
+			JSONParser parse = new JSONParser();
 			//Type caste the parsed json data in json object
-			JSONObject jobj = new JSONObject(inline);
+			JSONObject jobj = (JSONObject)parse.parse(inline);
 			JSONObject jobj1 = (JSONObject)jobj.get("nodes");
 			//System.out.println(jobj1);
 			JSONArray jobj2 = (JSONArray)jobj1.get("node");
-			for (int i = 0; i < jobj2.length(); i++) {  // **line 2**
+			for (int i = 0; i < jobj2.size(); i++) {  // **line 2**
    				JSONObject childJSONObject = (JSONObject)jobj2.get(i);
   				String id = childJSONObject.get("id").toString();
 				//System.out.println(name);

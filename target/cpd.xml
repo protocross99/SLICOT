@@ -1,2 +1,178 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<pmd-cpd/>
+<pmd-cpd>
+   <duplication lines="46" tokens="172">
+      <file line="216"
+            path="/home/netfpga/getpacket/impl/src/main/java/com/siwind/bupt/impl/FlowManager.java"/>
+      <file line="313"
+            path="/home/netfpga/getpacket/impl/src/main/java/com/siwind/bupt/impl/FlowManager.java"/>
+      <codefragment><![CDATA[                                +"</flow>";
+			// Create Http connection
+			connection = (HttpURLConnection) url.openConnection();
+
+			// Set connection properties
+			connection.setRequestMethod("PUT");
+			connection.setRequestProperty("Authorization", "Basic "
+					+ encodedAuthStr);
+			connection.setRequestProperty("Content-Type", "application/xml");
+			connection.setRequestProperty("Accept","application/xml");
+			connection.setUseCaches(false);
+			connection.setDoInput(true);
+			connection.setDoOutput(true);
+
+			// Set Post Data
+			/*
+			DataOutputStream wr = new DataOutputStream(connection.getOutputStream());
+            		wr.writeBytes(xmlString);
+            		wr.flush();
+            		wr.close();
+			*/
+			OutputStream os = connection.getOutputStream();
+            os.write(xmlString.getBytes());
+			os.flush();
+            os.close();
+
+			// Getting the response code
+			callStatus = connection.getResponseCode();
+
+		} catch (Exception e) {
+			System.err.println("Unexpected error while flow installation.. "
+					+ e.getMessage());
+			e.printStackTrace();
+		} finally {
+			if (connection != null)
+				connection.disconnect();
+		}
+
+		if (callStatus == CREATED) {
+			System.out.println("Flow installed Successfully");
+			return true;
+		} else {
+			System.err.println("Failed to install flow.. " + callStatus);
+			return false;
+		}
+	}]]></codefragment>
+   </duplication>
+   <duplication lines="42" tokens="159">
+      <file line="80"
+            path="/home/netfpga/getpacket/impl/src/main/java/com/siwind/bupt/impl/FlowManager.java"/>
+      <file line="214"
+            path="/home/netfpga/getpacket/impl/src/main/java/com/siwind/bupt/impl/FlowManager.java"/>
+      <codefragment><![CDATA[			+"<flow-name>" + flowName + "</flow-name>"
+			+"<priority>20</priority>"
+		+"</flow>";
+			// Create Http connection
+			connection = (HttpURLConnection) url.openConnection();
+
+			// Set connection properties
+			connection.setRequestMethod("PUT");
+			connection.setRequestProperty("Authorization", "Basic "
+					+ encodedAuthStr);
+			connection.setRequestProperty("Content-Type", "application/xml");
+			connection.setRequestProperty("Accept","application/xml");
+			connection.setUseCaches(false);
+			connection.setDoInput(true);
+			connection.setDoOutput(true);
+
+			// Set Post Data
+			/*
+			DataOutputStream wr = new DataOutputStream(connection.getOutputStream());
+            		wr.writeBytes(xmlString);
+            		wr.flush();
+            		wr.close();
+			*/
+			OutputStream os = connection.getOutputStream();
+            os.write(xmlString.getBytes());
+			os.flush();
+            os.close();
+
+			// Getting the response code
+			callStatus = connection.getResponseCode();
+
+		} catch (Exception e) {
+			System.err.println("Unexpected error while flow installation.. "
+					+ e.getMessage());
+			e.printStackTrace();
+		} finally {
+			if (connection != null)
+				connection.disconnect();
+		}
+
+		if (callStatus == CREATED) {
+			System.out.println("Flow installed Successfully on node: " + nodeId);]]></codefragment>
+   </duplication>
+   <duplication lines="40" tokens="151">
+      <file line="82"
+            path="/home/netfpga/getpacket/impl/src/main/java/com/siwind/bupt/impl/FlowManager.java"/>
+      <file line="313"
+            path="/home/netfpga/getpacket/impl/src/main/java/com/siwind/bupt/impl/FlowManager.java"/>
+      <codefragment><![CDATA[		+"</flow>";
+			// Create Http connection
+			connection = (HttpURLConnection) url.openConnection();
+
+			// Set connection properties
+			connection.setRequestMethod("PUT");
+			connection.setRequestProperty("Authorization", "Basic "
+					+ encodedAuthStr);
+			connection.setRequestProperty("Content-Type", "application/xml");
+			connection.setRequestProperty("Accept","application/xml");
+			connection.setUseCaches(false);
+			connection.setDoInput(true);
+			connection.setDoOutput(true);
+
+			// Set Post Data
+			/*
+			DataOutputStream wr = new DataOutputStream(connection.getOutputStream());
+            		wr.writeBytes(xmlString);
+            		wr.flush();
+            		wr.close();
+			*/
+			OutputStream os = connection.getOutputStream();
+            os.write(xmlString.getBytes());
+			os.flush();
+            os.close();
+
+			// Getting the response code
+			callStatus = connection.getResponseCode();
+
+		} catch (Exception e) {
+			System.err.println("Unexpected error while flow installation.. "
+					+ e.getMessage());
+			e.printStackTrace();
+		} finally {
+			if (connection != null)
+				connection.disconnect();
+		}
+
+		if (callStatus == CREATED) {
+			System.out.println("Flow installed Successfully on node: " + nodeId);]]></codefragment>
+   </duplication>
+   <duplication lines="23" tokens="137">
+      <file line="209"
+            path="/home/netfpga/getpacket/impl/src/main/java/com/siwind/bupt/impl/PacketHandler.java"/>
+      <file line="234"
+            path="/home/netfpga/getpacket/impl/src/main/java/com/siwind/bupt/impl/PacketHandler.java"/>
+      <codefragment><![CDATA[					} else {
+						//Store data to pending list
+						flowId = "SLICOT" + flowNum;
+						flowName = "Temp-SLICOTS" + flowNum;
+						mainPendingList.addRecord(srcMacRaw,dstMacRaw,srcPortRaw,dstPortRaw,"SYN",tableId,flowId);
+						for (String nodeId : nodeList) {
+							flowName = "Temp-SLICOTS" + flowNum;
+							flowId = "SLICOT" + flowNum;
+							FlowManager.installFlow(nodeId,flowName,dstMac,srcMac,tableId,flowId);
+							flowNum += 1;
+						}
+						//To controller
+						flowId = "SLICOT" + flowNum;
+						flowName = "Temp-SLICOTS-CTRL" + flowNum;
+						subPendingList.addRecord(srcMacRaw,dstMacRaw,srcPortRaw,dstPortRaw,"SYN",tableId,flowId);
+						for (String nodeId : nodeList) {
+							flowName = "Temp-SLICOTS-CTRL" + flowNum;
+							flowId = "SLICOT" + flowNum;
+							FlowManager.installFlowToController(nodeId,flowName,dstMac,srcMac,tableId,flowId);
+							flowNum += 1;
+						}
+						//Update request num
+						supportRequestList.updateRequestList(srcMacRaw);]]></codefragment>
+   </duplication>
+</pmd-cpd>
